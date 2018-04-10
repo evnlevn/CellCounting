@@ -11,4 +11,7 @@ addpath(genpath(path1));
 %
 % Extract intensity from OCT file
 intensity = load('D1S1_intensity.mat'); % Output is in form [z,x,y]
-intensity = permute(intensity,[3,1,2])
+intensity = intensity.intensity;
+
+
+%% Unsharp Masking
