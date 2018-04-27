@@ -6,17 +6,27 @@
 close all;clc
 %% Modulating Code
 % All values of 1 run the corresponding sections
+Modulate.Day = 4;
 Modulate.ReadMat = 1;
 Modulate.Conversion = 1;
-Modulate.ReadDat = 1;
-Modulate.Preprocessing = 1;
-Modulate.K_Means = 1;
+Modulate.ReadDat = 0;
+Modulate.Preprocessing = 0;
+Modulate.K_Means = 0;
 Modulate.Save = 0;
 %% Reading Intensity Measurements from .mat files
 % Extract intensity from OCT file
 if Modulate.ReadMat == 1
     
-    intensity = load('Hi_res_S1D1.mat'); % Output is in form [z,x,y]
+    if Modulate.Day == 1
+        intensity = load('Hi_res_S1D1.mat'); % Output is in form [z,x,y]
+    elseif Modulate.Day == 2
+        intensity = load('Hi_res_S1D2.mat'); % Output is in form [z,x,y]
+    elseif Modulate.Day == 3
+        intensity = load('Hi_res_S1D3.mat'); % Output is in form [z,x,y]
+    elseif Modulate.Day == 4
+        intensity = load('Hi_res_S1D4.mat'); % Output is in form [z,x,y]
+    end
+    
     intensity = intensity.intensity;
     
 end
@@ -44,20 +54,43 @@ end
 %% Reading .dat File and Storing into a 3D Matrix
 if Modulate.ReadDat == 1
     
-    file=dir('G:\Denzel\RPI\Year 2\Spring 2018\Classes - Spring 2018\BMED 6460 - Biological Image Analysis\Project\20180417T175923\*.dat');
-    data=zeros(size(intensity));
-    for i=1:length(file)
-        fname=strcat('G:\Denzel\RPI\Year 2\Spring 2018\Classes - Spring 2018\BMED 6460 - Biological Image Analysis\Project\20180417T175923\',file(i).name);
-        data(:,:,i)=csvread(fname);
+    if Modulate.Day == 1
+        file=dir('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D1_Data\*.dat');
+        data=zeros(size(intensity));
+        for i=1:length(file)
+            fname=strcat('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D1_Data\',file(i).name);
+            data(:,:,i)=csvread(fname);
+        end
+    elseif Modulate.Day == 2
+        file=dir('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D2_Data\*.dat');
+        data=zeros(size(intensity));
+        for i=1:length(file)
+            fname=strcat('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D2_Data\',file(i).name);
+            data(:,:,i)=csvread(fname);
+        end
+    elseif Modulate.Day == 3
+        file=dir('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D3_Data\*.dat');
+        data=zeros(size(intensity));
+        for i=1:length(file)
+            fname=strcat('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D3_Data\',file(i).name);
+            data(:,:,i)=csvread(fname);
+        end
+    elseif Modulate.Day == 4
+        file=dir('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D4_Data\*.dat');
+        data=zeros(size(intensity));
+        for i=1:length(file)
+            fname=strcat('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D4_Data\',file(i).name);
+            data(:,:,i)=csvread(fname);
+        end
     end
-    
+        
 end
 %% Normalize Raw Data & Apply Unsharp Masking (Preprocessing)
 %
 if Modulate.Preprocessing == 1
     % Find target region based on middle image
     im=data(:,:,round(size(data,3)/2));
-    figure, imshow(uint8(im))
+    figure; imshow(uint8(im))
     % User input to determine ROI
     [c,r] = ginput(2)  % First click above sample, second click below
     close all
@@ -78,6 +111,11 @@ if Modulate.Preprocessing == 1
         
     end
        
+    % Middle Slice of Sharpened Image
+    [z,x,y] = size(im);
+    figure('Name','Image Check of Middle Slice of Sharpened Image')
+    imagesc(im(:,:,round(y/2))); axis image
+    
     % Segment Dish
     % Generate Volume Statistics
     m = mean(rsz(:));
@@ -109,7 +147,7 @@ if Modulate.Preprocessing == 1
     
     % Display Preprocessed images
     im=uint8(im);
-    for i=1:64:size(im,2)
+    for i=1:round(size(im,3)/8):size(im,3)
         %         figure, imshow(im(:,:,i))
         %         figure, histogram(im(:,:,i))
         figure('Name','Image and Histogram of Slices');
@@ -143,9 +181,9 @@ if Modulate.K_Means == 1
     
     figure('Name','K-Means Clustering Results');
     count = 1;
-    increment = 32;
+    increment = y/8;
     for i = increment:increment:size(im,2)
-        subplot(8,2,count)
+        subplot(3,3,count)
         imagesc(cluster(:,:,i)); axis image;
         title(sprintf('Image of Slice #%d',i));
         count = count+1;
@@ -167,7 +205,17 @@ end
 %% Save Image
 if Modulate.Save == 1
     
-    cd('G:\Denzel\RPI\Year 2\Spring 2018\Classes - Spring 2018\BMED 6460 - Biological Image Analysis\Project\20180417T175923');
+    if Modulate.Day == 1
+         cd('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D1_Data');
+    elseif Modulate.Day == 2
+         cd('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D2_Data');
+    elseif Modulate.Day == 3
+         cd('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D3_Data');
+    elseif Modulate.Day == 4
+         cd('C:\Users\OCT\Desktop\BMED6640\Sample Matrices\D4_Data');
+    end
+    
+    
     win = uint8(win);
     
     for i = 1:size(cluster,2)
