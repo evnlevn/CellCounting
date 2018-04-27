@@ -6,13 +6,13 @@
 close all;clc
 %% Modulating Code
 % All values of 1 run the corresponding sections
-Modulate.Day = 1;
-Modulate.ReadMat = 0;
-Modulate.Conversion = 0;
-Modulate.ReadDat = 0;
+Modulate.Day = 2;
+Modulate.ReadMat = 1;
+Modulate.Conversion = 1;
+Modulate.ReadDat = 1;
 Modulate.Preprocessing = 1;
 Modulate.K_Means = 1;
-Modulate.Save = 0;
+Modulate.Save = 1;
 %% Reading Intensity Measurements from .mat files
 % Extract intensity from OCT file
 if Modulate.ReadMat == 1
@@ -79,7 +79,7 @@ if Modulate.ReadDat == 1
             data(:,:,i)=csvread(fname);
         end
     end
-        
+    
 end
 %% Normalize Raw Data & Apply Unsharp Masking (Preprocessing)
 %
@@ -88,13 +88,13 @@ if Modulate.Preprocessing == 1
     im=data(:,:,round(size(data,3)/2));
     figure; imshow(uint8(im))
     % User input to determine ROI
-    [c,r] = ginput(2)  % First click above sample, second click below
+    [c,r] = ginput(2);  % First click above sample, second click below
     close all
     
     % Resize all images to ROI and apply normalization and sharpening
     rsz=[]; % Initialzing 3D Data Cube of Resized Image
     h=ones(5)/25; % Sharpening Kernel
-    k=1.3;
+    k=0.8;
     [z,x,y] = size(data);
     depth = abs(round(r(2))-round(r(1))) + 1;
     rsz = zeros(depth,x,y);
@@ -108,10 +108,9 @@ if Modulate.Preprocessing == 1
         im=im+abs(min(im(:)));
         im=floor(255.*(im./max(im(:))));
         hboost(:,:,i) = im;
-        rsz(:,:,i)=imgaussfilt(im,1);
-        
+        rsz(:,:,i)=imgaussfilt(im,3);
     end
-       
+    
     % Middle Slice of Sharpened Image
     [z,x,y] = size(hboost);
     figure('Name','Image Check of Middle Slice of Sharpened Image')
@@ -119,17 +118,19 @@ if Modulate.Preprocessing == 1
     
     % Segment Dish
     % Generate Volume Statistics
-    m = mean(hboost(:));
-    stdev=std(double(hboost(:)));
-    dishfilt=zeros(size(hboost));
+    m = mean(rsz(:));
+    stdev=std(double(rsz(:)));
+    dishfilt=zeros(size(rsz));
     sto=strel('disk',4); % Opening/dilation
     stc=strel('disk',3); % Erode/erosion
     % Set all dish values to be binary 1
+    %     figure
     for i=1:size(hboost,3)
-        dishfilt(:,:,i)=hboost(:,:,i)>uint8(m+2.5*stdev);
+        dishfilt(:,:,i)=rsz(:,:,i)>uint8(m+2*stdev);
         dishfilt(:,:,i)=imdilate(dishfilt(:,:,i),sto);
         dishfilt(:,:,i)=imerode(dishfilt(:,:,i),stc);
-        %     figure,imshow(dishfilt(:,:,i))
+        %         imshow(dishfilt(:,:,i))
+        %         i
     end
     
     %Subtract Dish from Images
@@ -140,10 +141,20 @@ if Modulate.Preprocessing == 1
         for j = 1:x
             for k = 1:y
                 if dishfilt(i,j,k) == 1
-                    hboost(i,j,k) = m - stdev;
+                    hboost(i,j,k) = m - 0.5*stdev;
+                elseif hboost(i,j,k) <=  m + 0.75*stdev
+                    hboost(i,j,k) = m - 0.5*stdev;
                 end
             end
         end
+    end
+    
+    
+    stc=strel('square',2); % Erode/erosion
+    sto=strel('square',1); % Opening/dilation
+    for i=1:size(hboost,3)
+        hboost(:,:,i)=imerode(hboost(:,:,i),stc);
+        hboost(:,:,i)=imdilate(hboost(:,:,i),sto);
     end
     
     % Display Preprocessed images
@@ -196,6 +207,11 @@ if Modulate.K_Means == 1
     for i = 1:z
         for j = 1:x
             for k = 1:y
+                if cluster(i,j,k) == 1
+                    cluster(i,j,k) = 0;
+                elseif cluster(i,j,k) == 0
+                    cluster(i,j,k) = 1;
+                end
                 win(i,j,k) = hboost(i,j,k).*cluster(i,j,k);
             end
         end
